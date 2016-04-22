@@ -74,7 +74,6 @@ var init = function() {
   // update the board position after the piece snap
   // for castling, en passant, pawn promotion
   var onSnapEnd = function() {
-    console.log("onSnapEnd");
     board.position(game.fen());
   };
 
