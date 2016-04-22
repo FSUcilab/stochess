@@ -23,6 +23,9 @@ function MCTS(game, board){
     this.real_game = game;
   };
 
+  this.is_fen_in_stats = function(fen){
+    return (fen in this.move_stats);
+  }
   //calculates the best move
   this.get_best_move = function(){
 
@@ -38,15 +41,13 @@ function MCTS(game, board){
       return possible_moves[0];
     }
 
-    var possible_fens = new Array(possible_moves.length);
-
     //get FENs for all possible moves
-    var all_moves_in_move_stats = true;
-    for (var move_idx = 0; move_idx < possible_moves.length; move_idx++){
-      simulated_game.move(possible_moves[move_idx]);
-      possible_fens[move_idx] = simulated_game.fen();
+    var possible_fens = possible_moves.map(function(m) {
+      simulated_game.move(m);
+      var fen = simulated_game.fen();
       simulated_game.undo();
-    }
+      return fen;
+    });
 
     var num_simulations = 0;
     //run simulation for this.max_calculation_time
@@ -94,46 +95,39 @@ function MCTS(game, board){
 
     for (var i = 0; i < this.max_moves; i++){
       var possible_moves = simulated_game.moves();
-      var possible_fens = new Array(possible_moves.length);
+
+      //gen FENs for all possible_moves
+      var possible_fens = possible_moves.map(function(m) {
+        simulated_game.move(m);
+        var fen = simulated_game.fen();
+        simulated_game.undo();
+        return fen;
+      });
 
       //check if all of the moves are in this.move_stats
-      //and get FENs for all possible moves
+      var all_fens_have_stats = possible_fens.every(this.is_fen_in_stats.bind(this));
 
-      var all_moves_in_move_stats = true;
-      for (var move_idx = 0; move_idx < possible_moves.length; move_idx++){
-        simulated_game.move(possible_moves[move_idx]);
-        possible_fens[move_idx] = simulated_game.fen();
-        if (!(possible_fens[move_idx] in this.move_stats)){
-          simulated_game.undo();
-          all_moves_in_move_stats = false;
-          break;
-        }
-        simulated_game.undo();
-      }
-
-
-
-      //if all moves in this.move_stats
-      if (all_moves_in_move_stats){
+      //if all moves/fens have stats
+      if (all_fens_have_stats){
         //choose by UCT
         //sum of all simulated games of the possible FENs
-        var sum_simulated_games = 0;
-        for (var fen_idx = 0; fen_idx < possible_fens.length; fen_idx++){
-            sum_simulated_games += this.move_stats[possible_fens[fen_idx]][0];
-            sum_simulated_games += this.move_stats[possible_fens[fen_idx]][1];
-            sum_simulated_games += this.move_stats[possible_fens[fen_idx]][2];
-        }
+        var sum_all_games = possible_fens.reduce(function(sum, fen){
+          sum += this.move_stats[fen][0];
+          sum += this.move_stats[fen][1];
+          sum += this.move_stats[fen][2];
+          return sum;
+        }.bind(this));
 
         //calculate UCT values
         var ucts = new Array(possible_fens.length);
         for (var fen_idx = 0; fen_idx < possible_fens.length; fen_idx++){
-            var num_wins = this.move_stats[possible_fens[fen_idx]][this.stat_idx[current_player]];
-            var num_games = 0;
-            num_games += this.move_stats[possible_fens[fen_idx]][0];
-            num_games += this.move_stats[possible_fens[fen_idx]][1];
-            num_games += this.move_stats[possible_fens[fen_idx]][2];
-            ucts[fen_idx] = (num_wins/num_games)
-            + this.exploration*(Math.sqrt(Math.log(sum_simulated_games)/num_games));
+          var num_wins = this.move_stats[possible_fens[fen_idx]][this.stat_idx[current_player]];
+          var num_games = 0;
+          num_games += this.move_stats[possible_fens[fen_idx]][0];
+          num_games += this.move_stats[possible_fens[fen_idx]][1];
+          num_games += this.move_stats[possible_fens[fen_idx]][2];
+          ucts[fen_idx] = (num_wins/num_games)
+          + this.exploration*(Math.sqrt(Math.log(sum_all_games)/num_games));
       }
 
         //find best move (highest UCT value)
