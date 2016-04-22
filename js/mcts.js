@@ -1,5 +1,6 @@
 //Implementation of Monte Carlo Tree search
 
+var fs = require('fs');
 
 function MCTS(game, board){
   this.real_game = game;
