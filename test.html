@@ -1,0 +1,41 @@
+<!--<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+  <title>Testing Node JS Modules</title>
+
+  <link rel="stylesheet" href="css/chessboard-0.3.0.min.css" />
+</head>
+<body>
+
+<p><a href="index.html">&larr; Back</a></p>
+<p> Testing, testing... </p>
+<script src="js/queryLi.js"></script>
+<script>
+function init() {
+    var queryLi = require("js/queryLi.js");
+    //var fen = "r1bqkb1r/3pnppp/p1n1p3/1Np5/B2PP3/5N2/PPP2PPP/R1BQK2R%20b%20KQkq%20-%200%207";
+    var fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR%20w%20KQkq%20-%200%201";
+    queryLi.getStats(fen, function(stats) {
+        document.write("Stats for fen...");
+        document.write(stats);
+    });
+}; // end init()
+$(document).ready(init);
+</script>
+
+</body>
+</html> --!>
+
+<!DOCTYPE html>
+<html>
+<body>
+
+<script>
+var qs = require("qs");
+document.write(Date());
+</script>
+
+</body>
+</html> 
