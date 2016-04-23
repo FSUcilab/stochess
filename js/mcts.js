@@ -1,6 +1,6 @@
 //Implementation of Monte Carlo Tree search
 
-var fs = require('fs');
+//var fs = require('fs');
 
 function MCTS(game, board){
   this.real_game = game;
@@ -10,10 +10,9 @@ function MCTS(game, board){
   // 0. number of games white won
   // 1. number of games drawn
   // 2. number of games black won
-  // 3. average rating of players that played the games
   this.move_stats = {};
+  //dictionary that maps the game result to the appropriate entry in move_stats
   this.stat_idx = {"w":0, "d":1, "b":2};
-  this.max_depth = 0
   this.max_calculation_time = 30*1000;  //in milliseconds
   this.max_moves = 1000
   this.exploration = 1.4
@@ -27,6 +26,7 @@ function MCTS(game, board){
   this.is_fen_in_stats = function(fen){
     return (fen in this.move_stats);
   }
+
   //calculates the best move
   this.get_best_move = function(){
 
@@ -118,21 +118,20 @@ function MCTS(game, board){
           sum += this.move_stats[fen][2];
           return sum;
         }.bind(this));
-
+	
         //calculate UCT values
-        var ucts = new Array(possible_fens.length);
-        for (var fen_idx = 0; fen_idx < possible_fens.length; fen_idx++){
-          var num_wins = this.move_stats[possible_fens[fen_idx]][this.stat_idx[current_player]];
-          var num_games = 0;
-          num_games += this.move_stats[possible_fens[fen_idx]][0];
-          num_games += this.move_stats[possible_fens[fen_idx]][1];
-          num_games += this.move_stats[possible_fens[fen_idx]][2];
-          ucts[fen_idx] = (num_wins/num_games)
-          + this.exploration*(Math.sqrt(Math.log(sum_all_games)/num_games));
-      }
+	var ucts = possible_fens.map(function(fen){
+	  var num_wins = this.move_stats[fen][this.stat_idx[current_player]];
+	  var num_games = this.move_stats[fen][0];
+	  num_games += this.move_stats[fen][1];
+	  num_games += this.move_stats[fen][2];
+	  var uct = num_wins/num_games;
+	  uct += this.exploration*(Math.sqrt(Math.log(sum_all_games)/num_games));
+	  return uct;
+	}, this);
 
         //find best move (highest UCT value)
-        var max_uct_idx = ucts[0];
+        var max_uct_idx = 0;
         for (var j = 0; j < ucts.length; j++){
             if (ucts[j] > ucts[max_uct_idx]){
                 max_uct_idx = j;
