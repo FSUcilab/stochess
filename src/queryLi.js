@@ -21,7 +21,6 @@ function getStats(fen, callback) {
     // routine. Then, once both queries are finished combine their stats into
     // one object and return it to the caller.
     async.map(queries, httpQuery, function(err, stats) {
-        //stats.forEach(function(s,i,a){console.log("\nStats " + i + ": ", s);});
         var totWhite = 0;
         var totDraws = 0;
         var totBlack = 0;
