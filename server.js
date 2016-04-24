@@ -16,8 +16,6 @@ app.get('/', function(req, res, next) {
   res.setHeader('Content-Type', 'application/json');
 
   var fen = req.query.fen;
-  //var pgn = req.query.pgn;
-  //pgnToFen(pgn, function(fens)) {
 
   // Use connect method to connect to the Server
   var db = MongoClient.connect('mongodb://localhost:27017/stochess', function (err, db) {
@@ -41,7 +39,7 @@ app.get('/', function(req, res, next) {
               console.log("Result.length", result.length);
               if (result.length) {
                 console.log("Found in database...");
-                res.send(JSON.stringify(result));
+                res.send(JSON.stringify(result[0].stats));
               } else {
                   console.log('No document(s) found with defined "find" criteria!');
                   console.log('Querying Lichess for the data...');
