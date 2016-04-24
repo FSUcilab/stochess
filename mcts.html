@@ -24,18 +24,17 @@
 <script src="js/json3.min.js"></script>
 <script src="js/jquery-1.10.1.min.js"></script>
 <script src="js/chessboard-0.3.0.min.js"></script>
-<script src="js/mcts.js"></script>
 <script>
 
 var init = function() {
-  //var board = ChessBoard('board', 'start');
+
 
   var board,
     game = new Chess(),
-    AI = new MCTS(game),
     statusEl = $('#status'),
     fenEl = $('#fen'),
-    pgnEl = $('#pgn');
+    pgnEl = $('#pgn'),
+    serverURL = "http://expl.lichess.org/master?fen=";
 
   // do not pick up pieces if the game is over
   // only pick up pieces for White
@@ -46,11 +45,40 @@ var init = function() {
     }
   };
 
-  var makeAIMove = function() {
-    AI.update_game(game);
-    game.move(AI.get_best_move());
+  var makeRandomMove = function() {
+    var possibleMoves = game.moves();
+
+    // game over
+    if (possibleMoves.length === 0) return;
+
+    var randomIndex = Math.floor(Math.random() * possibleMoves.length);
+    game.move(possibleMoves[randomIndex]);
     board.position(game.fen());
     updateStatus();
+  };
+
+  var makeServerMove = function() {
+    //request move
+    var currentPgn = game.pgn();
+    var request = serverURL + currentPgn;
+
+    //overwriting request with test request (until server is ready)
+    request = "http://expl.lichess.org/master?fen=rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR%20w%20KQkq%20-%200%201"
+    $.ajax({
+        url: request,
+        error: function() {
+            console.log("Could not get move from server.");
+        },
+        dataType: 'jsonp',
+        success: function(data){
+            var move = data;
+            //make the move given by the request
+            //make random move for now (until the server is ready)
+            console.log(move);
+            window.setTimeout(makeRandomMove, 300);
+        },
+        type: 'GET'
+    });
   };
 
   var onDrop = function(source, target) {
@@ -66,7 +94,7 @@ var init = function() {
 
     // make AI move for black
 
-    window.setTimeout(makeAIMove(), 300);
+    window.setTimeout(makeServerMove(), 300);
 
     updateStatus();
   };
