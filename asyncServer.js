@@ -18,6 +18,9 @@ function whoseTurn(fen) {
 
 function formProbabilities(moveStats, turn) {
 
+  console.log("moveStats = ", moveStats);
+  console.log("moveStats[0].stats = ", moveStats[0].stats);
+  console.log("moveStats[0].stats.white = ", moveStats[0].stats.white);
   var totGames = 0;
   var g = [];
   for(var i=0, len=moveStats.length; i < len; i++) {
@@ -44,12 +47,16 @@ function formProbabilities(moveStats, turn) {
     p[i] /= totScaledWins;
   }
 
-  return p;
+  console.log("Probabilities = ", p);
 
+  return p;
 }
 
 function chooseMoveCompetition(moveStats, probabilities) {
 
+  console.log("In chooseMoveComptetition");
+  console.log("probabilities = ", probabilities);
+  console.log("moveStats = ", moveStats);
   if (probabilities.length === 0) {
     return -1;
   }
@@ -64,6 +71,9 @@ function chooseMoveCompetition(moveStats, probabilities) {
     }
   }
 
+  console.log("maxIndex = ", maxIndex);
+  console.log("max = ", max);
+  console.log("moveStats.length = ", moveStats.length);
   return moveStats[maxIndex].fen;
 
 }
@@ -104,7 +114,8 @@ app.get('/', function(req, res, next) {
                   console.log("Result.length", result.length);
                   if (result.length) {
                     console.log("Found in database...");
-                    allMoveStats.push(result);
+                    console.log("result[0] = ", result[0]);
+                    allMoveStats.push(result[0]);
                     callback();
                   } else {
                       console.log('No document(s) found with defined "find" criteria!');
@@ -115,9 +126,9 @@ app.get('/', function(req, res, next) {
                           console.log("Found in Lichess database...");
                           console.log("result = ", result);
                           allMoveStats.push(result);
+                          // Eventually this needs to be put below simulate....
                           console.log("Inserting record into local database");
-                          var data = {"fen": possible_move, "stats": result};
-                          collection.insert(data, function(err, result) {
+                          collection.insert(result, function(err, result) {
                             if (err) {
                               console.log("Error inserting new record into database: ", err);
                             } else {
@@ -134,22 +145,27 @@ app.get('/', function(req, res, next) {
                   }
                 }
               }); // end toArray callback
-            }, function(err, result) {db.close();}); // end collection.find
+            }, function(err, result) {
+         
+                console.log("\nAll Stats have been gathered...\n");
+                if (allMoveStats.length === 0) { // this means we have no record of any of the moves
+                  console.log("No record of any moves! Returning random move (for now...)");
+                  var randomIndex = Math.floor(Math.random()*possible_moves.length)
+                  res.send(possible_moves[randomIndex]); // return random move
+                }
+                var currentMoveFen = history[history.length-1];
+                var turn = whoseTurn(currentMoveFen);
+                var probabilities = formProbabilities(allMoveStats, turn);
+                var move = chooseMoveCompetition(allMoveStats, probabilities);
+                console.log("The best move is... ", move);
+                res.send(JSON.stringify(move));
+                       
+                db.close();
+            }); // end collection.find
           }
         }); // end db.collection
       }
     }); // end MongoClient.connect
-
-  if (allMoveStats.length === 0) { // this means we have no record of any of the moves
-    console.log("No record of any moves! Returning random move (for now...)");
-    res.send(possible_moves[Math.floor(Math.random()*possible_moves.length)]); // return random move
-  }
-  var currentMoveFen = history[history.length-1];
-  var turn = whoseTurn(currentMoveFen);
-  var probabilities = formProbabilities(allMoveStats, turn);
-  var move = chooseMoveCompetition(probabilities, allMoveStats);
-  console.log("The best move is... ", move);
-  res.send(JSON.stringify(move));
   }); // end pgnToFen
 }); // end app.get
 
