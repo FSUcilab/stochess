@@ -35,10 +35,11 @@ function getStats(fen, callback) {
             totGames += gamesi;
         }
         var result = {
-            white: totWhite,
-            draws: totDraws,
-            black: totBlack,
-            averageRating: parseInt(num/totGames, 10)  // weighted average of ratings
+            fen: fen,
+            stats: {  white: totWhite,
+                      draws: totDraws,
+                      black: totBlack,
+                      averageRating: parseInt(num/totGames, 10) },  // weighted average of ratings
         };
         callback(result);
     });
