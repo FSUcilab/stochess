@@ -34,7 +34,7 @@ var init = function() {
     statusEl = $('#status'),
     fenEl = $('#fen'),
     pgnEl = $('#pgn'),
-    serverURL = "http://expl.lichess.org/master?fen=";
+    serverURL = "http://mathnathan.com/chess/query/?pgn=";
 
   // do not pick up pieces if the game is over
   // only pick up pieces for White
@@ -59,25 +59,38 @@ var init = function() {
 
   var makeServerMove = function() {
     //request move
-    var currentPgn = game.pgn();
+    var currentPgn = encodeURIComponent(game.pgn());
     var request = serverURL + currentPgn;
 
-    //overwriting request with test request (until server is ready)
-    //request = "http://expl.lichess.org/master?fen=rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR%20w%20KQkq%20-%200%201"
+    var possibleMoves = game.moves();
+    var tempGame = Chess(game.fen());
+    var possibleFens = possibleMoves.map(function(move) {
+        tempGame.move(move);
+        var fen = tempGame.fen();
+        tempGame.undo();
+        return fen;
+    });
+    // exit if the game is over
+    if (game.game_over() === true ||
+      game.in_draw() === true ||
+      possibleMoves.length === 0) return;
+
     $.ajax({
         url: request,
-        error: function() {
-            console.log("Could not get move from server.");
+        error: function(jqxhr, errorStatus, errorThrown) {
+            console.log(errorStatus);
+            console.log(errorThrown);
         },
-        dataType: 'jsonp',
-        success: function(data){
-            var move = data;
-            //make the move given by the request
-            //make random move for now (until the server is ready)
-            console.log(move);
-            window.setTimeout(makeRandomMove, 300);
-        },
-        type: 'GET'
+        dataType: 'text',
+        success: function(response){
+            var bestFen = response.split('"').join('');
+            var bestMoveIdx = possibleFens.findIndex(function(fen){
+                return fen.valueOf() == bestFen.valueOf();
+            });
+            game.move(possibleMoves[bestMoveIdx]);
+            board.position(game.fen());
+            updateStatus();
+        }
     });
   };
 
