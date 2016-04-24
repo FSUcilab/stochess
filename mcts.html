@@ -14,7 +14,8 @@
 
 <!-- HTML for board, status, fen, pgn -->
 <div id="board" style="width: 400px"></div>
-<p>Status: <span id="status"></span></p>
+<p>AI Status: <span id="server_status"></span></p>
+<p>Game Status: <span id="status"></span></p>
 <p>FEN: <span id="fen"></span></p>
 <p>PGN: <span id="pgn"></span></p>
 <!-- end of UI html setup -->
@@ -31,6 +32,7 @@ var init = function() {
 
   var board,
     game = new Chess(),
+    serverStatusEl = $('#server_status'),
     statusEl = $('#status'),
     fenEl = $('#fen'),
     pgnEl = $('#pgn'),
@@ -58,6 +60,7 @@ var init = function() {
   };
 
   var makeServerMove = function() {
+      serverStatusEl.html("Thinking...");
     //request move
     var currentPgn = encodeURIComponent(game.pgn());
     var request = serverURL + currentPgn;
@@ -80,6 +83,7 @@ var init = function() {
         error: function(jqxhr, errorStatus, errorThrown) {
             console.log(errorStatus);
             console.log(errorThrown);
+            serverStatusEl.html("AI has encountered an error.");
         },
         dataType: 'text',
         success: function(response){
@@ -89,6 +93,7 @@ var init = function() {
             });
             game.move(possibleMoves[bestMoveIdx]);
             board.position(game.fen());
+            serverStatusEl.html("Waiting for your move.");
             updateStatus();
         }
     });
@@ -159,6 +164,7 @@ var init = function() {
     onSnapEnd: onSnapEnd
   };
   board = ChessBoard('board', cfg);
+  serverStatusEl.html("Waiting for your move.");
   updateStatus();
 
 }; // end init()
