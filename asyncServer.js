@@ -1,26 +1,16 @@
 var fs = require('fs'),
     http = require('http'),
     express = require('express'),
-    ql = require('./src/queryLi.js'),
+    tools = require('./src/tools.js'),
     url = require('url'),
     mongodb = require('mongodb'),
     async = require('async');
-    tools = require('./src/pgnToFen.js');
     
 var MongoClient = mongodb.MongoClient;
 var app = express();
 
-function whoseTurn(fen) {
-	var turn = fen.split(" ")[1];
-  console.log("\nThe turn is... ", turn);
-  return turn;
-}
-
 function formProbabilities(moveStats, turn) {
 
-  console.log("moveStats = ", moveStats);
-  console.log("moveStats[0].stats = ", moveStats[0].stats);
-  console.log("moveStats[0].stats.white = ", moveStats[0].stats.white);
   var totGames = 0;
   var g = [];
   for(var i=0, len=moveStats.length; i < len; i++) {
@@ -84,21 +74,57 @@ app.get('/', function(req, res, next) {
   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
   res.setHeader('Content-Type', 'application/json');
 
-  //var fen = req.query.fen;
-  var allMoveStats = [];
-  var pgn = req.query.pgn;
-  console.log("PGN = ", pgn);
-  tools.pgnToFen(pgn, function(history, possible_moves, turn) {
 
-    // Use connect method to connect to the Server
-    var db = MongoClient.connect('mongodb://localhost:27017/stochess', 
-      function (err, db) {
-      if (err) {
-        console.log('Unable to connect to the mongoDB server. Error:', err);
-      } else {
-        console.log('Connection established to', url);
+  // Use connect method to connect to the Server
+  var db = MongoClient.connect('mongodb://localhost:27017/stochess', 
+    function (err, db) {
+    if (err) {
+      console.log('Unable to connect to the mongoDB server. Error:', err);
+    } else {
+      console.log('Connection established to', url);
 
-        // Get the documents collection
+      if( req.query.endgame ) {
+        console.log("endgame = ", req.query.endgame);
+        db.collection('endgame_tablebase', {strict:true}, function(err, collection) {
+          if (err) { 
+            console.log("Error accessing endgame_tablebase collection: ", err); 
+          } else {
+            collection.find({"fen": req.query.fen}).toArray(function (err, result) {
+                if (err) {
+                      console.log("Error!: ", err);
+                } else {
+                  console.log("Result.length", result.length);
+                  if (result.length) {
+                    console.log("Endgame found in database...");
+                    console.log("The best move is... ", result[0]);
+                    res.send(JSON.stringify(result[0].bestMove));
+                    db.close();
+                  } else {
+                    console.log("Endgame not found in database...");
+                    console.log("Querying online tablebase...");
+                    tools.queryEndGame(req.query.fen, function(error, result) {
+                      res.send(JSON.stringify(result.bestMove));
+                      console.log("The best move is... ", result);
+                      console.log("Inserting endgame record into local database...");
+                          collection.insert(result, function(err, result) {
+                            if (err) {
+                              console.log("Error inserting new record into database: ", err);
+                            } else {
+                              console.log(result);
+                            }
+                            db.close();
+                          });
+                        });
+                      }
+                    }
+                  }); 
+                }
+              });
+      } else if (req.query.pgn) {
+
+        var allMoveStats = [];
+        var pgn = req.query.pgn;
+        console.log("PGN = ", pgn);
         db.collection('fen_stats', {strict:true}, function(err, collection) {
           if (err) { 
             console.log("Database collection not found: ", err); 
@@ -106,71 +132,65 @@ app.get('/', function(req, res, next) {
           else {
             // See if the fen is in the database
             console.log("Checking database for records");
-            async.map(possible_moves, function(possible_move, callback) {
-              collection.find({"fen": possible_move}).toArray(function (err, result) {
-                if (err) {
-                      console.log("Error!: ", err);
-                } else {
-                  console.log("Result.length", result.length);
-                  if (result.length) {
-                    console.log("Found in database...");
-                    console.log("result[0] = ", result[0]);
-                    allMoveStats.push(result[0]);
-                    callback();
-                  } else {
-                      console.log('No document(s) found with defined "find" criteria!');
-                      console.log('Querying Lichess for the data...');
-                      console.log("fen = ", possible_move);
-                      ql.getStats(possible_move, function(result) {
-                        if (result.averageRating != 0) {
-                          console.log("Found in Lichess database...");
-                          console.log("result = ", result);
-                          allMoveStats.push(result);
-                          // Eventually this needs to be put below simulate....
-                          console.log("Inserting record into local database");
-                          collection.insert(result, function(err, result) {
-                            if (err) {
-                              console.log("Error inserting new record into database: ", err);
-                            } else {
-                              console.log(result);
-                            }
-                          });
-                          callback();
-                        } else {
-                          console.log("Lichess has no record of this board state...");
-                          // Then we need to simulate to form the stats
-                          console.log("Simulating Games...");
-                        }
-                    }); // end ql.getStat
-                  }
-                }
-              }); // end toArray callback
-            }, function(err, result) {
-         
-                console.log("\nAll Stats have been gathered...\n");
-                if (allMoveStats.length === 0) { // this means we have no record of any of the moves
-                  console.log("No record of any moves! Returning random move (for now...)");
-                  var randomIndex = Math.floor(Math.random()*possible_moves.length)
-                  res.send(possible_moves[randomIndex]); // return random move
-                }
-                var currentMoveFen = history[history.length-1];
-                var turn = whoseTurn(currentMoveFen);
-                var probabilities = formProbabilities(allMoveStats, turn);
-                var move = chooseMoveCompetition(allMoveStats, probabilities);
-                console.log("The best move is... ", move);
-                res.send(JSON.stringify(move));
-                       
-                db.close();
-            }); // end collection.find
-          }
-        }); // end db.collection
-      }
-    }); // end MongoClient.connect
-  }); // end pgnToFen
-}); // end app.get
+            tools.pgnToFen(pgn, function(history, possible_moves, turn) {
+              tools.getStats(history[history.length-1], function(liStats) {
+                async.map(possible_moves, function(possible_move, callback) {
+                  collection.find({"fen": possible_move}).toArray(function (err, result) {
+                    if (err) {
+                        console.log("Error!: ", err);
+                    } else if (result.length) {
+                        console.log("Found in database...");
+                        console.log("result = ", result[0]);
+                        allMoveStats.push(result[0]);
+                        callback();
+                    } else if(liStats.hasOwnProperty(possible_move)) {
+                        console.log('Data found at Lichess...');
+                        allMoveStats.push(liStats[possible_move]);
+                        // Eventually this needs to be put below simulate....
+                        console.log("Inserting record into local database");
+                        collection.insert(liStats[possible_move], function(err, result) {
+                          if (err) {
+                            console.log("Error inserting new record into database: ", err);
+                          } else {
+                            console.log(result);
+                            callback();
+                          }
+                        });
+                    } else {
+                        console.log("No record of this board state exists...");
+                        // Then we need to simulate to form the stats
+                        console.log("Simulating...");
+                        callback();
+                    }
+                  }); // end collection.find()
+                }, function(err, result) {
+                    console.log("\nAll Stats have been gathered...\n");
+                    if (allMoveStats.length === 0) { // this means we have no record of any of the moves
+                      console.log("No record of any moves! Returning random move (for now...)");
+                      var randomIndex = Math.floor(Math.random()*possible_moves.length)
+                      res.send(possible_moves[randomIndex]); // return random move
+                      db.close();
+                    } else {
+                      var turn = history[history.length-1].split(" ")[1];
+                      var probabilities = formProbabilities(allMoveStats, turn);
+                      var move = chooseMoveCompetition(allMoveStats, probabilities);
+                      console.log("The best move is... ", move);
+                      res.send(JSON.stringify(move));
+                      db.close();
+                    }
+                }); // end async.map()
+              }); // end tools.getStats()
+            }); // end tools.pgnToFen()
+          };
+        }); 
+      }; 
+    }
+  }); // end MongoClient.connect()
+}); // end app.get()
 
 var port = 8888;
 var server = app.listen(port, function () {
   var host = 'localhost'
   console.log('query server listening at http://%s:%s', host, port);
 });
+server.timeout = 1200000;
