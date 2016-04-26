@@ -37,6 +37,8 @@ var init = function() {
     fenEl = $('#fen'),
     pgnEl = $('#pgn'),
     serverURL = "http://mathnathan.com/chess/query/?pgn=";
+    endGameURL = "http://mathnathan.com/chess/query/?fen=";
+    material = game.fen().split(" ")[0].match(/[a-z]/gi).length;
 
   // do not pick up pieces if the game is over
   // only pick up pieces for White
@@ -47,24 +49,17 @@ var init = function() {
     }
   };
 
-  var makeRandomMove = function() {
-    var possibleMoves = game.moves();
-
-    // game over
-    if (possibleMoves.length === 0) return;
-
-    var randomIndex = Math.floor(Math.random() * possibleMoves.length);
-    game.move(possibleMoves[randomIndex]);
-    board.position(game.fen());
-    updateStatus();
-  };
-
   var makeServerMove = function() {
       serverStatusEl.html("Thinking...");
     //request move
     var currentPgn = encodeURIComponent(game.pgn());
-    var request = serverURL + currentPgn;
-
+    var currentFen = encodeURIComponent(game.fen());
+    var request;
+    if (material <= 6){
+	 request = endGameURL + currentFen;
+    } else {
+         request = serverURL + currentPgn;
+    }
     var possibleMoves = game.moves();
     var tempGame = Chess(game.fen());
     var possibleFens = possibleMoves.map(function(move) {
@@ -91,7 +86,8 @@ var init = function() {
             var bestMoveIdx = possibleFens.findIndex(function(fen){
                 return fen.valueOf() == bestFen.valueOf();
             });
-            game.move(possibleMoves[bestMoveIdx]);
+            var move = game.move(possibleMoves[bestMoveIdx]);
+	    if(move.captured) material -= 1;
             board.position(game.fen());
             serverStatusEl.html("Waiting for your move.");
             updateStatus();
@@ -109,7 +105,7 @@ var init = function() {
 
     // illegal move
     if (move === null) return 'snapback';
-
+    if (move.captured) material -= 1;
     // make AI move for black
 
     window.setTimeout(makeServerMove(), 300);
