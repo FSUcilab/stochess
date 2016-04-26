@@ -34,27 +34,42 @@ function queryEndGame(fen, callback) {
   var params = {fen:fen}; 
   var query = url+"?"+qs.stringify(params); // form the query
   var game = new chessjs.Chess(fen);
+  var turn = game.turn();
+  var map = {'w': 'white', 'd': 'draws', 'b': 'black'};
 
   request.get(query,
     function (error, response, body) {
       var json = JSON.parse(body);
-      var bestmove = json.moves[json.bestmove].san;
-      game.move(bestmove);
-      var bestMoveFEN = game.fen();
+      if(error) {
+        console.log("Error: ", error);
+      }
       var outcome;
       if ( json.wdl > 0 ) {
-        outcome = "win";  
+        outcome = map[turn];  
       } else if ( json.wdl < 0 ) {
-        outcome = "loss";
+        turn == 'white' ? outcome = 'black' : outcome = 'white';
       } else {
-        outcome = "draw";
-      }
-      var result = {
+        outcome = "draws";
+      } 
+      if (json.bestmove === null) {
+        console.log("Checkmate! No best move...");
+        var result = {
           "fen": fen,
-          "bestMove": bestMoveFEN,
-          "outCome": outcome
-      };
-      callback(error, result);
+          "bestmove": null,
+          "outcome": outcome
+        };
+        callback(error, result);
+      } else {
+        var bestmove = json.moves[json.bestmove].san;
+        game.move(bestmove);
+        var bestMoveFEN = game.fen();
+        var result = {
+            "fen": fen,
+            "bestmove": bestMoveFEN,
+            "outcome": outcome
+        };
+        callback(error, result);
+      }
   });
 };
 
@@ -85,10 +100,9 @@ function getStats(fen, callback) {
           game.move(moves0[i].san);
           var newFen = game.fen();
           result[newFen] = {fen: newFen,
-                         stats: {white: moves0[i].white,
-                                 draws: moves0[i].draws,
-                                 black: moves0[i].black}
-                        };
+                            white: moves0[i].white,
+                            draws: moves0[i].draws,
+                            black: moves0[i].black}
           game.undo()
         }
         //console.log("result after moves0", result);
@@ -97,17 +111,16 @@ function getStats(fen, callback) {
           game.move(moves1[i].san);
           var newFen = game.fen();
           if (result.hasOwnProperty(newFen)) {
-            result[newFen].stats.white += moves1[i].white;
-            result[newFen].stats.draws += moves1[i].draws;
-            result[newFen].stats.black += moves1[i].black;
+            result[newFen].white += moves1[i].white;
+            result[newFen].draws += moves1[i].draws;
+            result[newFen].black += moves1[i].black;
           } else {
             result[newFen] = {fen: newFen,
-                         stats: {white: moves1[i].white,
-                                 draws: moves1[i].draws,
-                                 black: moves1[i].black}
-                        };
+                              white: moves1[i].white,
+                              draws: moves1[i].draws,
+                              black: moves1[i].black};
           }
-          game.undo()
+          game.undo();
         }
         //console.log("result after moves1", result);
         callback(result);
