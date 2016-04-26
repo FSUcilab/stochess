@@ -31,7 +31,7 @@ var board,
   serverStatusEl = $('#server_status'),
   fenEl = $('#fen'),
   pgnEl = $('#pgn');
-  serverURL = "http://mathnathan.com/chess/query/?pgn=";
+  serverURL = "http://mathnathan.com/chess/training/query/?pgn=";
   serverEndgameURL = "http://mathnathan.com/chess/query/?fen=";
 
 var makeServerMove = function() {
@@ -63,7 +63,10 @@ var makeServerMove = function() {
   // exit if the game is over
   if (game.game_over() === true ||
     game.in_draw() === true ||
-    possibleMoves.length === 0) return;
+    possibleMoves.length === 0) {
+      window.location.reload();
+      return;
+  }
 
     console.log("request = ", request);
   $.ajax({
@@ -87,22 +90,6 @@ var makeServerMove = function() {
       async: false
   });
   window.setTimeout(makeServerMove, 500);
-};
-
-var makeRandomMove = function() {
-  var possibleMoves = game.moves();
-
-  // exit if the game is over
-  if (game.game_over() === true ||
-    game.in_draw() === true ||
-    possibleMoves.length === 0) return;
-
-  var randomIndex = Math.floor(Math.random() * possibleMoves.length);
-  game.move(possibleMoves[randomIndex]);
-  board.position(game.fen());
-
-  window.setTimeout(makeRandomMove, 500);
-  updateStatus();
 };
 
 var updateStatus = function() {
