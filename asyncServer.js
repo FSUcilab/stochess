@@ -17,7 +17,7 @@ var app = express();
 
 var exports = module.exports = {};
 
-var MAX_SIMS = 1;
+var MAX_SIMS = 10;
 
 function simulate(startFen, collection, numSims, callback) {
 
@@ -158,8 +158,7 @@ app.get('/', function(req, res, next) {
     } else {
       console.log('Connection established to', url);
 
-        if( req.query.endgame ) {
-          console.log("endgame = ", req.query.endgame);
+        if( req.query.fen ) {
           db.collection('endgame_tablebase', {strict:true}, function(err, collection) {
             if (err) { 
               console.log("Error accessing endgame_tablebase collection: ", err); 
@@ -206,7 +205,9 @@ app.get('/', function(req, res, next) {
             else {
               // See if the fen is in the database
               console.log("Checking database for records");
-              tools.pgnToFen(pgn, function(history, possible_moves, turn) {
+              tools.pgnToFen(pgn, function(history, possible_moves) {
+                console.log("history = ", history);
+                console.log("possible_moves = ", possible_moves);
                 tools.getStats(history[history.length-1], function(liStats) {
                   var toSim = [];
                   async.map(possible_moves, function(possible_move, callback) {
@@ -317,4 +318,4 @@ var server = app.listen(port, function () {
   var host = 'localhost'
   console.log('query server listening at http://%s:%s', host, port);
 });
-server.timeout = 1200000;
+server.timeout = 1200000000;

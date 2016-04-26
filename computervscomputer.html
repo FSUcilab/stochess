@@ -1,0 +1,150 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+  <title>Computer vs Computer</title>
+
+  <link rel="stylesheet" href="css/chessboard-0.3.0.min.css" />
+</head>
+<body>
+
+<p><a href="index.html">&larr; Back</a></p>
+<p> Random moves vs Random moves </p>
+<!-- start example HTML --->
+<script src="js/chess.min.js"></script>
+<div id="board" style="width: 400px"></div>
+<p>Status: <span id="status"></span></p>
+<p>FEN: <span id="fen"></span></p>
+<p>PGN: <span id="pgn"></span></p>
+<!-- end example HTML --->
+
+<script src="js/json3.min.js"></script>
+<script src="js/jquery-1.10.1.min.js"></script>
+<script src="js/chessboard-0.3.0.min.js"></script>
+<script>
+var init = function() {
+
+var board,
+  game = new Chess(),
+  statusEl = $('#status'),
+  serverStatusEl = $('#server_status'),
+  fenEl = $('#fen'),
+  pgnEl = $('#pgn');
+  serverURL = "http://mathnathan.com/chess/query/?pgn=";
+  serverEndgameURL = "http://mathnathan.com/chess/query/?fen=";
+
+var makeServerMove = function() {
+    serverStatusEl.html("Thinking...");
+  //request move
+  var currentFen = game.fen();
+  var currentPgn;
+  if(currentFen === "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {
+    currentPgn = encodeURIComponent("0");
+    } else {
+    currentPgn = encodeURIComponent(game.pgn());
+  }
+
+  var possibleMoves = game.moves();
+  var tempGame = Chess(currentFen);
+  var material = currentFen.split(" ")[0].match(/[a-z]/gi).length;
+  var request;
+  if(material <= 6) {
+    request = serverEndgameURL + encodeURIComponent(currentFen);
+    } else {
+    request = serverURL + currentPgn;
+  }
+  var possibleFens = possibleMoves.map(function(move) {
+      tempGame.move(move);
+      var fen = tempGame.fen();
+      tempGame.undo();
+      return fen;
+  });
+  // exit if the game is over
+  if (game.game_over() === true ||
+    game.in_draw() === true ||
+    possibleMoves.length === 0) return;
+
+    console.log("request = ", request);
+  $.ajax({
+      url: request,
+      error: function(jqxhr, errorStatus, errorThrown) {
+          console.log(errorStatus);
+          console.log(errorThrown);
+          serverStatusEl.html("AI has encountered an error.");
+      },
+      dataType: 'text',
+      success: function(response){
+          var bestFen = response.split('"').join('');
+          var bestMoveIdx = possibleFens.findIndex(function(fen){
+              return fen.valueOf() == bestFen.valueOf();
+          });
+          game.move(possibleMoves[bestMoveIdx]);
+          board.position(game.fen());
+          serverStatusEl.html("Waiting for your move.");
+          updateStatus();
+      },
+      async: false
+  });
+  window.setTimeout(makeServerMove, 500);
+};
+
+var makeRandomMove = function() {
+  var possibleMoves = game.moves();
+
+  // exit if the game is over
+  if (game.game_over() === true ||
+    game.in_draw() === true ||
+    possibleMoves.length === 0) return;
+
+  var randomIndex = Math.floor(Math.random() * possibleMoves.length);
+  game.move(possibleMoves[randomIndex]);
+  board.position(game.fen());
+
+  window.setTimeout(makeRandomMove, 500);
+  updateStatus();
+};
+
+var updateStatus = function() {
+  var status = '';
+
+  var moveColor = 'White';
+  if (game.turn() === 'b') {
+    moveColor = 'Black';
+  }
+
+  // checkmate?
+  if (game.in_checkmate() === true) {
+    status = 'Game over, ' + moveColor + ' is in checkmate.';
+  }
+
+  // draw?
+  else if (game.in_draw() === true) {
+    status = 'Game over, drawn position';
+  }
+
+  // game still on
+  else {
+    status = moveColor + ' to move';
+
+    // check?
+    if (game.in_check() === true) {
+      status += ', ' + moveColor + ' is in check';
+    }
+  }
+
+  statusEl.html(status);
+  fenEl.html(game.fen());
+  pgnEl.html(game.pgn());
+};
+
+board = ChessBoard('board', 'start');
+
+window.setTimeout(makeServerMove, 500);
+updateStatus();
+
+}; // end init()
+$(document).ready(init);
+</script>
+</body>
+</html>

@@ -6,15 +6,21 @@ var chessjs = require('../js/chess.min.js');
 var exports = module.exports = {};
 
 function pgnToFen(pgn, callback){
-	var game = new chessjs.Chess();
-	var history = pgn.split(" ").filter(function(s, i){
-		return !(i % 3 == 0)
-	});
 
-	var history_fens = history.map(function(move){
-		game.move(move);
-		return game.fen();
-	});
+  var game = new chessjs.Chess();
+  var history_fens;
+  if (pgn == 0) { // Opening, hard code the fen for now
+    history_fens = ["rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"]
+  } else {
+    var history = pgn.split(" ").filter(function(s, i){
+      return !(i % 3 == 0)
+    });
+
+    history_fens = history.map(function(move){
+      game.move(move);
+      return game.fen();
+    });
+  }
 
   //get FENs for all possible_moves
   var possible_fens = game.moves().map(function(move) {
