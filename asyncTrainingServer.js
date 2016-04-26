@@ -18,7 +18,6 @@ var app = express();
 var exports = module.exports = {};
 
 var MAX_SIMS = 1;
-
 app.get('/', function(req, res, next) {
   // enable CORS
   res.header("Access-Control-Allow-Origin", "*");
@@ -189,7 +188,7 @@ app.get('/', function(req, res, next) {
   }); // end MongoClient.connect()
 }); // end app.get()
 
-var port = 8888;
+var port = 8889;
 var server = app.listen(port, function () {
   var host = 'localhost'
   console.log('query server listening at http://%s:%s', host, port);
