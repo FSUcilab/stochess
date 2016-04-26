@@ -10,7 +10,7 @@
 <body>
 
 <p><a href="index.html">&larr; Back</a></p>
-<p> Random moves vs Random moves </p>
+<p> Computer vs Computer </p>
 <!-- start example HTML --->
 <script src="js/chess.min.js"></script>
 <div id="board" style="width: 400px"></div>
@@ -32,7 +32,7 @@ var board,
   fenEl = $('#fen'),
   pgnEl = $('#pgn');
   serverURL = "http://mathnathan.com/chess/training/query/?pgn=";
-  serverEndgameURL = "http://mathnathan.com/chess/query/?fen=";
+  serverEndgameURL = "http://mathnathan.com/chess/training/query/?fen=";
 
 var makeServerMove = function() {
     serverStatusEl.html("Thinking...");
